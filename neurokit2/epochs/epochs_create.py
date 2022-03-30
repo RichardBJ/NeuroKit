@@ -31,14 +31,14 @@ def epochs_create(
         will chunk the signal into successive blocks of the set duration.
     sampling_rate : int
         The sampling frequency of the signal (in Hz, i.e., samples/second).
-    epochs_start : int, list
+    epochs_start : float, list
         Epochs start relative to events_onsets (in seconds). The start can be negative to
         start epochs before a given event (to have a baseline for instance).
-        An integer can be specified to have the same start for all epochs.
+        A single value can be specified to have the same start for all epochs.
         A list of equal length to the events can be specified to have a different start for each epoch.
-    epochs_end : int, list
+    epochs_end : float, list
         Epochs end relative to events_onsets (in seconds).
-        An integer can be specified to have the same end for all epochs.
+        A single value can be specified to have the same end for all epochs.
         A list of equal length to the events can be specified to have a different end for each epoch.
         If "from_events", events must be a dict (from ``events_find()`).
         Duration from events will be used as epochs_end.
