@@ -4,7 +4,11 @@ import pandas as pd
 
 
 def signal_formatpeaks(info, desired_length, peak_indices=None, other_indices=None):
-    """Transforms an peak-info dict to a signal of given length."""
+    """**Format Peaks**
+
+    Transforms a peak-info dict to a signal of given length
+
+    """
     if peak_indices is None:
         peak_indices = [key for key in info.keys() if "Peaks" in key]
 
@@ -50,12 +54,11 @@ def _signal_sanitize_indices(indices, values):
 
 
 def _signal_from_indices(indices, desired_length=None, value=1):
-    """Generates array of 0 and given values at given indices.
+    """**Generates array of 0 and given values at given indices**
 
     Used in *_findpeaks to transform vectors of peak indices to signal.
 
     """
-    # signal = np.zeros(desired_length, dtype=float)
     signal = pd.Series(np.zeros(desired_length, dtype=float))
 
     if isinstance(indices, list) and (not indices):  # skip empty lists
@@ -81,14 +84,11 @@ def _signal_from_indices(indices, desired_length=None, value=1):
                 "is different from the number of indices."
             )
         signal[indices] = value
-        # signal[indices] = value
 
     return signal
 
 
-def _signal_formatpeaks_sanitize(
-    peaks, key="Peaks"
-):  # FIXME: private function not used in this module
+def _signal_formatpeaks_sanitize(peaks, key="Peaks"):  # FIXME: private function not used in this module
     # Attempt to retrieve column.
     if isinstance(peaks, tuple):
         if isinstance(peaks[0], (dict, pd.DataFrame)):

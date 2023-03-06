@@ -5,8 +5,10 @@ from ..signal import signal_autocor
 
 
 def eda_autocor(eda_cleaned, sampling_rate=1000, lag=4):
-    """Computes autocorrelation measure of raw EDA signal i.e., the correlation between the time series data and a
-    specified time-lagged version of itself.
+    """**EDA Autocorrelation**
+
+    Compute the autocorrelation measure of raw EDA signal i.e., the correlation between the time
+    series data and a specified time-lagged version of itself.
 
     Parameters
     ----------
@@ -30,19 +32,22 @@ def eda_autocor(eda_cleaned, sampling_rate=1000, lag=4):
 
     Examples
     ---------
-    >>> import neurokit2 as nk
-    >>>
-    >>> # Simulate EDA signal
-    >>> eda_signal = nk.eda_simulate(duration=5, scr_number=5, drift=0.1)
-    >>> eda_cleaned = nk.eda_clean(eda_signal)
-    >>> cor = nk.eda_autocor(eda_cleaned)
-    >>> cor #doctest: +SKIP
+    .. ipython:: python
+
+      import neurokit2 as nk
+
+      # Simulate EDA signal
+      eda_signal = nk.eda_simulate(duration=5, scr_number=5, drift=0.1)
+      eda_cleaned = nk.eda_clean(eda_signal)
+      cor = nk.eda_autocor(eda_cleaned)
+      cor
 
     References
     -----------
-    - Halem, S., van Roekel, E., Kroencke, L., Kuper, N., & Denissen, J. (2020). Moments That Matter?
-      On the Complexity of Using Triggers Based on Skin Conductance to Sample Arousing Events Within
-      an Experience Sampling Framework. European Journal of Personality.
+    * van Halem, S., Van Roekel, E., Kroencke, L., Kuper, N., & Denissen, J. (2020). Moments that
+      matter? On the complexity of using triggers based on skin conductance to sample arousing
+      events within an experience sampling framework. European Journal of Personality, 34(5),
+      794-807.
 
     """
     # Sanity checks

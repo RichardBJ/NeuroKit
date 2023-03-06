@@ -1,59 +1,75 @@
 # -*- coding: utf-8 -*-
 import pandas as pd
-from ..complexity import transition_matrix
+
+from ..markov import transition_matrix
 from ..misc import as_vector
 
 
-def microstates_dynamic(microstates):
-    """Dynamic properties of microstates (transition pattern)
+def microstates_dynamic(microstates, show=False):
+    """**Dynamic Properties of Microstates**
 
-    Based on https://github.com/Frederic-vW/eeg_microstates and https://github.com/maximtrp/mchmm
+    This computes statistics related to the transition pattern (based on the
+    :func:`.transition_matrix`).
+
+    .. note::
+
+        This function does not compute all the features available under the markov submodule.
+        Don't hesitate to open an issue to help us test and decide what features to include.
 
     Parameters
     ----------
     microstates : np.ndarray
-        The topographic maps of the found unique microstates which has a shape of n_channels x n_states,
-        generated from ``nk.microstates_segment()``.
+        The topographic maps of the found unique microstates which has a shape of n_channels x
+        n_states, generated from :func:`.nk.microstates_segment`.
+    show : bool
+        Show the transition matrix.
+
 
     Returns
     -------
     DataFrame
-        Dynamic properties of microstates:
-        - Results of the observed transition matrix
-        - Chi-square test statistics of the observed microstates against the expected microstates
-        - Symmetry test statistics of the observed microstates against the expected microstates
+        Dynamic properties of microstates.
 
     See Also
     --------
-    transition_matrix
+    .transition_matrix, .microstates_static
 
     Examples
     --------
-    >>> import neurokit2 as nk
-    >>> import numpy as np
-    >>>
-    >>> microstates = np.array([0, 0, 0, 1, 1, 2, 2, 2, 2, 1, 0, 0])
-    >>> nk.microstates_dynamic(microstates)  #doctest: +ELLIPSIS
-           Microstate_0_to_0  ...  Microstate_Symmetry_p
-    0                    ...  ...                    ...
+    .. ipython:: python
 
-    [1 rows x 15 columns]
+      import neurokit2 as nk
+
+      microstates = [0, 0, 0, 1, 1, 2, 2, 2, 2, 1, 0, 0, 2, 2]
+      @savefig p_microstates_dynamic1.png scale=100%
+      nk.microstates_dynamic(microstates, show=True)
+      @suppress
+      plt.close()
+
     """
-    microstates = as_vector(microstates)
+    # See https://github.com/Frederic-vW/eeg_microstates
+    # and https://github.com/maximtrp/mchmm
+    # for other implementations
+
     out = {}
 
+    # Try retrieving info
+    if isinstance(microstates, dict):
+        microstates = microstates["Sequence"]
+    # Sanitize
+    microstates = as_vector(microstates)
+
     # Transition matrix
-    results = transition_matrix(microstates)
-    T = results["Observed"]
+    tm, info = transition_matrix(microstates, show=show)
 
-    for row in T.index:
-        for col in T.columns:
-            out[str(T.loc[row].name) + "_to_" + str(T[col].name)] = T[col][row]
-
-    for _, rez in enumerate(results):
-        if rez not in ["Observed", "Expected"]:
-            out[rez] = results[rez]
+    for row in tm.index:
+        for col in tm.columns:
+            out[str(tm.loc[row].name) + "_to_" + str(tm[col].name)] = tm[col][row]
 
     df = pd.DataFrame.from_dict(out, orient="index").T.add_prefix("Microstate_")
+
+    # TODO:
+    # * Chi-square test statistics of the observed microstates against the expected microstates
+    # * Symmetry test statistics of the observed microstates against the expected microstates
 
     return df

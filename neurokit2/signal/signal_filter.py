@@ -19,35 +19,39 @@ def signal_filter(
     powerline=50,
     show=False,
 ):
-    """Filter a signal using 'butterworth', 'fir' or 'savgol' filters.
+    """**Signal filtering**
 
-    Apply a lowpass (if 'highcut' frequency is provided), highpass (if 'lowcut' frequency is provided)
-    or bandpass (if both are provided) filter to the signal.
+    Filter a signal using different methods such as "butterworth", "fir", "savgol" or "powerline"
+    filters.
+
+    Apply a lowpass (if "highcut" frequency is provided), highpass (if "lowcut" frequency is
+    provided) or bandpass (if both are provided) filter to the signal.
 
     Parameters
     ----------
     signal : Union[list, np.array, pd.Series]
         The signal (i.e., a time series) in the form of a vector of values.
-        or "bandstop".
     sampling_rate : int
         The sampling frequency of the signal (in Hz, i.e., samples/second).
     lowcut : float
-        Lower cutoff frequency in Hz. The default is None.
+        Lower cutoff frequency in Hz. The default is ``None``.
     highcut : float
-        Upper cutoff frequency in Hz. The default is None.
+        Upper cutoff frequency in Hz. The default is ``None``.
     method : str
-        Can be one of 'butterworth', 'fir', 'bessel' or 'savgol'. Note that for Butterworth, the function
-        uses the SOS method from `scipy.signal.sosfiltfilt`, recommended for general purpose filtering.
-        One can also specify "butterworth_ba' for a more traditional and legacy method (often implemented
-        in other software).
+        Can be one of ``"butterworth"``, ``"fir"``, ``"bessel"`` or ``"savgol"``. Note that for
+        Butterworth, the function uses the SOS method from :func:`.scipy.signal.sosfiltfilt`,
+        recommended for general purpose filtering. One can also specify ``"butterworth_ba"`` for a
+        more traditional and legacy method (often implemented in other software).
     order : int
-        Only used if method is 'butterworth' or 'savgol'. Order of the filter (default is 2).
+        Only used if ``method`` is ``"butterworth"`` or ``"savgol"``. Order of the filter (default
+        is 2).
     window_size : int
-        Only used if method is 'savgol'. The length of the filter window (i.e. the number of coefficients).
-        Must be an odd integer. If 'default', will be set to the sampling rate divided by 10
-        (101 if the sampling rate is 1000 Hz).
+        Only used if ``method`` is ``"savgol"``. The length of the filter window (i.e. the number of
+        coefficients). Must be an odd integer. If default, will be set to the sampling rate
+        divided by 10 (101 if the sampling rate is 1000 Hz).
     powerline : int
-        Only used if method is 'powerline'. The powerline frequency (normally 50 Hz or 60 Hz).
+        Only used if ``method`` is ``"powerline"``.
+        The powerline frequency (normally 50 Hz or 60Hz).
     show : bool
         If ``True``, plot the filtered signal as an overlay of the original.
 
@@ -62,58 +66,79 @@ def signal_filter(
 
     Examples
     --------
-    >>> import numpy as np
-    >>> import pandas as pd
-    >>> import neurokit2 as nk
-    >>>
-    >>> signal = nk.signal_simulate(duration=10, frequency=0.5) # Low freq
-    >>> signal += nk.signal_simulate(duration=10, frequency=5) # High freq
-    >>>
-    >>> # Lowpass
-    >>> fig1 = pd.DataFrame({"Raw": signal,
-    ...                      "Butter_2": nk.signal_filter(signal, highcut=3, method='butterworth', order=2),
-    ...                      "Butter_2_BA": nk.signal_filter(signal, highcut=3, method='butterworth_ba', order=2),
-    ...                      "Butter_5": nk.signal_filter(signal, highcut=3, method='butterworth', order=5),
-    ...                      "Butter_5_BA": nk.signal_filter(signal, highcut=3, method='butterworth_ba', order=5),
-    ...                      "Bessel_2": nk.signal_filter(signal, highcut=3, method='bessel', order=2),
-    ...                      "Bessel_5": nk.signal_filter(signal, highcut=3, method='bessel', order=5),
-    ...                      "FIR": nk.signal_filter(signal, highcut=3, method='fir')}).plot(subplots=True)
-    >>> fig1 #doctest: +SKIP
+    .. ipython:: python
 
-    >>> # Highpass
-    >>> fig2 = pd.DataFrame({"Raw": signal,
-    ...                      "Butter_2": nk.signal_filter(signal, lowcut=2, method='butterworth', order=2),
-    ...                      "Butter_2_ba": nk.signal_filter(signal, lowcut=2, method='butterworth_ba', order=2),
-    ...                      "Butter_5": nk.signal_filter(signal, lowcut=2, method='butterworth', order=5),
-    ...                      "Butter_5_BA": nk.signal_filter(signal, lowcut=2, method='butterworth_ba', order=5),
-    ...                      "Bessel_2": nk.signal_filter(signal, lowcut=2, method='bessel', order=2),
-    ...                      "Bessel_5": nk.signal_filter(signal, lowcut=2, method='bessel', order=5),
-    ...                      "FIR": nk.signal_filter(signal, lowcut=2, method='fir')}).plot(subplots=True)
-    >>> fig2 #doctest: +SKIP
+      import numpy as np
+      import pandas as pd
+      import neurokit2 as nk
 
-    >>> # Bandpass in real-life scenarios
-    >>> original = nk.rsp_simulate(duration=30, method="breathmetrics", noise=0)
-    >>> signal = nk.signal_distort(original, noise_frequency=[0.1, 2, 10, 100], noise_amplitude=1,
-    ...                            powerline_amplitude=1)
-    >>>
-    >>> # Bandpass between 10 and 30 breaths per minute (respiratory rate range)
-    >>> fig3 = pd.DataFrame({"Raw": signal,
-    ...                      "Butter_2": nk.signal_filter(signal, lowcut=10/60, highcut=30/60,
-    ...                                                   method='butterworth', order=2),
-    ...                      "Butter_2_BA": nk.signal_filter(signal, lowcut=10/60, highcut=30/60,
-    ...                                                      method='butterworth_ba', order=2),
-    ...                      "Butter_5": nk.signal_filter(signal, lowcut=10/60, highcut=30/60,
-    ...                                                   method='butterworth', order=5),
-    ...                      "Butter_5_BA": nk.signal_filter(signal, lowcut=10/60, highcut=30/60,
-    ...                                                      method='butterworth_ba', order=5),
-    ...                      "Bessel_2": nk.signal_filter(signal, lowcut=10/60, highcut=30/60,
-    ...                                                   method='bessel', order=2),
-    ...                      "Bessel_5": nk.signal_filter(signal, lowcut=10/60, highcut=30/60,
-    ...                                                   method='bessel', order=5),
-    ...                      "FIR": nk.signal_filter(signal, lowcut=10/60, highcut=30/60,
-    ...                                              method='fir'),
-    ...                      "Savgol": nk.signal_filter(signal, method='savgol')}).plot(subplots=True)
-    >>> fig3 #doctest: +SKIP
+      signal = nk.signal_simulate(duration=10, frequency=0.5) # Low freq
+      signal += nk.signal_simulate(duration=10, frequency=5) # High freq
+
+      # Visualize Lowpass Filtered Signal using Different Methods
+      @savefig p_signal_filter1.png scale=100%
+      fig1 = pd.DataFrame({"Raw": signal,
+                         "Butter_2": nk.signal_filter(signal, highcut=3, method="butterworth",
+                          order=2),
+                         "Butter_2_BA": nk.signal_filter(signal, highcut=3,
+                          method="butterworth_ba", order=2),
+                         "Butter_5": nk.signal_filter(signal, highcut=3, method="butterworth",
+                          order=5),
+                         "Butter_5_BA": nk.signal_filter(signal, highcut=3,
+                          method="butterworth_ba", order=5),
+                         "Bessel_2": nk.signal_filter(signal, highcut=3, method="bessel", order=2),
+                         "Bessel_5": nk.signal_filter(signal, highcut=3, method="bessel", order=5),
+                         "FIR": nk.signal_filter(signal, highcut=3, method="fir")}).plot(subplots=True)
+      @suppress
+      plt.close()
+
+    .. ipython:: python
+
+      # Visualize Highpass Filtered Signal using Different Methods
+      @savefig p_signal_filter2.png scale=100%
+      fig2 = pd.DataFrame({"Raw": signal,
+                          "Butter_2": nk.signal_filter(signal, lowcut=2, method="butterworth",
+                          order=2),
+                          "Butter_2_ba": nk.signal_filter(signal, lowcut=2,
+                          method="butterworth_ba", order=2),
+                          "Butter_5": nk.signal_filter(signal, lowcut=2, method="butterworth",
+                          order=5),
+                          "Butter_5_BA": nk.signal_filter(signal, lowcut=2,
+                          method="butterworth_ba", order=5),
+                          "Bessel_2": nk.signal_filter(signal, lowcut=2, method="bessel", order=2),
+                          "Bessel_5": nk.signal_filter(signal, lowcut=2, method="bessel", order=5),
+                          "FIR": nk.signal_filter(signal, lowcut=2, method="fir")}).plot(subplots=True)
+      @suppress
+      plt.close()
+
+    .. ipython:: python
+
+      # Using Bandpass Filtering in real-life scenarios
+      # Simulate noisy respiratory signal
+      original = nk.rsp_simulate(duration=30, method="breathmetrics", noise=0)
+      signal = nk.signal_distort(original, noise_frequency=[0.1, 2, 10, 100], noise_amplitude=1,
+                                powerline_amplitude=1)
+
+      # Bandpass between 10 and 30 breaths per minute (respiratory rate range)
+      @savefig p_signal_filter3.png scale=100%
+      fig3 = pd.DataFrame({"Raw": signal,
+                           "Butter_2": nk.signal_filter(signal, lowcut=10/60, highcut=30/60,
+                                                        method="butterworth", order=2),
+                           "Butter_2_BA": nk.signal_filter(signal, lowcut=10/60, highcut=30/60,
+                                                           method="butterworth_ba", order=2),
+                           "Butter_5": nk.signal_filter(signal, lowcut=10/60, highcut=30/60,
+                                                        method="butterworth", order=5),
+                           "Butter_5_BA": nk.signal_filter(signal, lowcut=10/60, highcut=30/60,
+                                                           method="butterworth_ba", order=5),
+                           "Bessel_2": nk.signal_filter(signal, lowcut=10/60, highcut=30/60,
+                                                        method="bessel", order=2),
+                           "Bessel_5": nk.signal_filter(signal, lowcut=10/60, highcut=30/60,
+                                                        method="bessel", order=5),
+                           "FIR": nk.signal_filter(signal, lowcut=10/60, highcut=30/60,
+                                                   method="fir"),
+                           "Savgol": nk.signal_filter(signal, method="savgol")}).plot(subplots=True)
+      @suppress
+      plt.close()
 
     """
     method = method.lower()
@@ -126,24 +151,22 @@ def signal_filter(
 
         # Sanity checks
         if lowcut is None and highcut is None:
-            raise ValueError(
-                "NeuroKit error: signal_filter(): you need to specify a 'lowcut' or a 'highcut'."
-            )
+            raise ValueError("NeuroKit error: signal_filter(): you need to specify a 'lowcut' or a 'highcut'.")
 
         if method in ["butter", "butterworth"]:
             filtered = _signal_filter_butterworth(signal, sampling_rate, lowcut, highcut, order)
         elif method in ["butter_ba", "butterworth_ba"]:
             filtered = _signal_filter_butterworth_ba(signal, sampling_rate, lowcut, highcut, order)
+        elif method in ["butter_zi", "butterworth_zi"]:
+            filtered = _signal_filter_butterworth_zi(signal, sampling_rate, lowcut, highcut, order)
         elif method in ["bessel"]:
             filtered = _signal_filter_bessel(signal, sampling_rate, lowcut, highcut, order)
         elif method in ["fir"]:
-            filtered = _signal_filter_fir(
-                signal, sampling_rate, lowcut, highcut, window_size=window_size
-            )
+            filtered = _signal_filter_fir(signal, sampling_rate, lowcut, highcut, window_size=window_size)
         else:
             raise ValueError(
                 "NeuroKit error: signal_filter(): 'method' should be",
-                " one of 'butterworth', 'butterworth_ba', 'bessel',",
+                " one of 'butterworth', 'butterworth_ba', 'butterworth_zi', 'bessel',",
                 " 'savgol' or 'fir'.",
             )
 
@@ -178,9 +201,7 @@ def _signal_filter_savgol(signal, sampling_rate=1000, order=2, window_size="defa
 # =============================================================================
 # FIR
 # =============================================================================
-def _signal_filter_fir(
-    signal, sampling_rate=1000, lowcut=None, highcut=None, window_size="default"
-):
+def _signal_filter_fir(signal, sampling_rate=1000, lowcut=None, highcut=None, window_size="default"):
     """Filter a signal using a FIR filter."""
     try:
         import mne
@@ -218,10 +239,7 @@ def _signal_filter_fir(
 
 def _signal_filter_butterworth(signal, sampling_rate=1000, lowcut=None, highcut=None, order=5):
     """Filter a signal using IIR Butterworth SOS method."""
-    freqs, filter_type = _signal_filter_sanitize(
-        lowcut=lowcut, highcut=highcut, sampling_rate=sampling_rate
-    )
-
+    freqs, filter_type = _signal_filter_sanitize(lowcut=lowcut, highcut=highcut, sampling_rate=sampling_rate)
     sos = scipy.signal.butter(order, freqs, btype=filter_type, output="sos", fs=sampling_rate)
     filtered = scipy.signal.sosfiltfilt(sos, signal)
     return filtered
@@ -230,9 +248,7 @@ def _signal_filter_butterworth(signal, sampling_rate=1000, lowcut=None, highcut=
 def _signal_filter_butterworth_ba(signal, sampling_rate=1000, lowcut=None, highcut=None, order=5):
     """Filter a signal using IIR Butterworth B/A method."""
     # Get coefficients
-    freqs, filter_type = _signal_filter_sanitize(
-        lowcut=lowcut, highcut=highcut, sampling_rate=sampling_rate
-    )
+    freqs, filter_type = _signal_filter_sanitize(lowcut=lowcut, highcut=highcut, sampling_rate=sampling_rate)
 
     b, a = scipy.signal.butter(order, freqs, btype=filter_type, output="ba", fs=sampling_rate)
     try:
@@ -243,15 +259,26 @@ def _signal_filter_butterworth_ba(signal, sampling_rate=1000, lowcut=None, highc
     return filtered
 
 
+def _signal_filter_butterworth_zi(signal, sampling_rate=1000, lowcut=None, highcut=None, order=5):
+    """Filter a signal using IIR Butterworth SOS method, given initial state (zi)."""
+
+    freqs, filter_type = _signal_filter_sanitize(lowcut=lowcut, highcut=highcut, sampling_rate=sampling_rate)
+
+    sos = scipy.signal.butter(order, freqs, btype=filter_type, output="sos", fs=sampling_rate)
+
+    zi_coeff = scipy.signal.sosfilt_zi(sos)
+    zi = zi_coeff * np.mean(signal)
+    # Filter data along one dimension using cascaded second-order sections.
+    return scipy.signal.sosfilt(sos, signal, zi=zi)[0]
+
+
 # =============================================================================
 # Bessel
 # =============================================================================
 
 
 def _signal_filter_bessel(signal, sampling_rate=1000, lowcut=None, highcut=None, order=5):
-    freqs, filter_type = _signal_filter_sanitize(
-        lowcut=lowcut, highcut=highcut, sampling_rate=sampling_rate
-    )
+    freqs, filter_type = _signal_filter_sanitize(lowcut=lowcut, highcut=highcut, sampling_rate=sampling_rate)
 
     sos = scipy.signal.bessel(order, freqs, btype=filter_type, output="sos", fs=sampling_rate)
     filtered = scipy.signal.sosfiltfilt(sos, signal)
@@ -282,8 +309,8 @@ def _signal_filter_powerline(signal, sampling_rate, powerline=50):
 def _signal_filter_sanitize(lowcut=None, highcut=None, sampling_rate=1000, normalize=False):
 
     # Sanity checks
-    if isinstance(highcut, int):
-        if sampling_rate <= 2 * highcut:
+    if lowcut is not None or highcut is not None:
+        if sampling_rate <= 2 * np.nanmax(np.array([lowcut, highcut], dtype=np.float64)):
             warn(
                 "The sampling rate is too low. Sampling rate"
                 " must exceed the Nyquist rate to avoid aliasing problem."
@@ -303,7 +330,8 @@ def _signal_filter_sanitize(lowcut=None, highcut=None, sampling_rate=1000, norma
             filter_type = "bandstop"
         else:
             filter_type = "bandpass"
-        freqs = [lowcut, highcut]
+        # pass frequencies in order of lowest to highest to the scipy filter
+        freqs = list(np.sort([lowcut, highcut]))
     elif lowcut is not None:
         freqs = [lowcut]
         filter_type = "highpass"

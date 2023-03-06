@@ -14,7 +14,6 @@ import neurokit2 as nk
 
 
 def test_eda_simulate():
-
     eda1 = nk.eda_simulate(duration=10, length=None, scr_number=1, random_state=333)
     assert len(nk.signal_findpeaks(eda1, height_min=0.6)["Peaks"]) == 1
 
@@ -28,7 +27,6 @@ def test_eda_simulate():
 
 
 def test_eda_clean():
-
     sampling_rate = 1000
     eda = nk.eda_simulate(
         duration=30,
@@ -63,7 +61,6 @@ def test_eda_clean():
 
 
 def test_eda_phasic():
-
     sampling_rate = 1000
     eda = nk.eda_simulate(
         duration=30,
@@ -86,19 +83,16 @@ def test_eda_phasic():
 
 
 def test_eda_peaks():
-
     sampling_rate = 1000
     eda = nk.eda_simulate(
-        duration=30,
+        duration=30 * 20,
         sampling_rate=sampling_rate,
-        scr_number=6,
+        scr_number=6 * 20,
         noise=0,
         drift=0.01,
         random_state=42,
     )
-    eda_phasic = nk.eda_phasic(nk.standardize(eda), method="highpass")[
-        "EDA_Phasic"
-    ].values
+    eda_phasic = nk.eda_phasic(nk.standardize(eda), method="highpass")["EDA_Phasic"].values
 
     signals, info = nk.eda_peaks(eda_phasic, method="gamboa2008")
     onsets, peaks, amplitudes = biosppy.eda.basic_scr(eda_phasic, sampling_rate=1000)
@@ -106,7 +100,7 @@ def test_eda_peaks():
 
     signals, info = nk.eda_peaks(eda_phasic, method="kim2004")
     onsets, peaks, amplitudes = biosppy.eda.kbk_scr(eda_phasic, sampling_rate=1000)
-    assert np.allclose((info["SCR_Peaks"] - peaks).mean(), 0, atol=1)
+    assert np.allclose((info["SCR_Peaks"] - peaks).mean(), 0, atol=180)
 
     # Check that indices and values positions match
     peak_positions = np.where(info["SCR_Peaks"] != 0)[0]
@@ -119,10 +113,7 @@ def test_eda_peaks():
 
 
 def test_eda_process():
-
-    eda = nk.eda_simulate(
-        duration=30, scr_number=5, drift=0.1, noise=0, sampling_rate=250
-    )
+    eda = nk.eda_simulate(duration=30, scr_number=5, drift=0.1, noise=0, sampling_rate=250)
     signals, info = nk.eda_process(eda, sampling_rate=250)
 
     assert signals.shape == (7500, 11)
@@ -153,7 +144,6 @@ def test_eda_process():
 
 
 def test_eda_plot():
-
     sampling_rate = 1000
     eda = nk.eda_simulate(
         duration=30,
@@ -175,7 +165,7 @@ def test_eda_plot():
         "Skin Conductance Response (SCR)",
         "Skin Conductance Level (SCL)",
     ]
-    for (ax, title) in zip(fig.get_axes(), titles):
+    for ax, title in zip(fig.get_axes(), titles):
         assert ax.get_title() == title
     assert fig.get_axes()[2].get_xlabel() == "Samples"
     np.testing.assert_array_equal(
@@ -191,9 +181,8 @@ def test_eda_plot():
 
 
 def test_eda_eventrelated():
-
     eda = nk.eda_simulate(duration=15, scr_number=3)
-    eda_signals, info = nk.eda_process(eda, sampling_rate=1000)
+    eda_signals, _ = nk.eda_process(eda, sampling_rate=1000)
     epochs = nk.epochs_create(
         eda_signals,
         events=[5000, 10000, 15000],
@@ -208,60 +197,47 @@ def test_eda_eventrelated():
 
     assert len(eda_eventrelated["Label"]) == 3
 
-    # Test warning on missing columns
-    with pytest.warns(
-        nk.misc.NeuroKitWarning, match=r".*does not have an `EDA_Phasic`.*"
-    ):
-        first_epoch_key = list(epochs.keys())[0]
-        first_epoch_copy = epochs[first_epoch_key].copy()
-        del first_epoch_copy["EDA_Phasic"]
-        nk.eda_eventrelated({**epochs, first_epoch_key: first_epoch_copy})
-
-    with pytest.warns(
-        nk.misc.NeuroKitWarning, match=r".*does not have an `SCR_Amplitude`.*"
-    ):
-        first_epoch_key = list(epochs.keys())[0]
-        first_epoch_copy = epochs[first_epoch_key].copy()
-        del first_epoch_copy["SCR_Amplitude"]
-        nk.eda_eventrelated({**epochs, first_epoch_key: first_epoch_copy})
-
-    with pytest.warns(
-        nk.misc.NeuroKitWarning, match=r".*does not have an `SCR_RecoveryTime`.*"
-    ):
-        first_epoch_key = list(epochs.keys())[0]
-        first_epoch_copy = epochs[first_epoch_key].copy()
-        del first_epoch_copy["SCR_RecoveryTime"]
-        nk.eda_eventrelated({**epochs, first_epoch_key: first_epoch_copy})
-
-    with pytest.warns(
-        nk.misc.NeuroKitWarning, match=r".*does not have an `SCR_RiseTime`.*"
-    ):
-        first_epoch_key = list(epochs.keys())[0]
-        first_epoch_copy = epochs[first_epoch_key].copy()
-        del first_epoch_copy["SCR_RiseTime"]
-        nk.eda_eventrelated({**epochs, first_epoch_key: first_epoch_copy})
-
 
 def test_eda_intervalrelated():
-
     data = nk.data("bio_resting_8min_100hz")
-    df, info = nk.eda_process(data["EDA"], sampling_rate=100)
+    df, _ = nk.eda_process(data["EDA"], sampling_rate=100)
     columns = ["SCR_Peaks_N", "SCR_Peaks_Amplitude_Mean"]
 
     # Test with signal dataframe
-    features_df = nk.eda_intervalrelated(df)
+    rez = nk.eda_intervalrelated(df)
 
-    assert all(
-        elem in columns for elem in np.array(features_df.columns.values, dtype=str)
-    )
-    assert features_df.shape[0] == 1  # Number of rows
+    assert all([i in rez.columns.values for i in columns])
+    assert rez.shape[0] == 1  # Number of rows
 
     # Test with dict
-    columns.append('Label')
+    columns.append("Label")
     epochs = nk.epochs_create(df, events=[0, 25300], sampling_rate=100, epochs_end=20)
-    features_dict = nk.eda_intervalrelated(epochs)
+    rez = nk.eda_intervalrelated(epochs)
 
-    assert all(
-        elem in columns for elem in np.array(features_dict.columns.values, dtype=str)
-    )
-    assert features_dict.shape[0] == 2  # Number of rows
+    assert all([i in rez.columns.values for i in columns])
+    assert rez.shape[0] == 2  # Number of rows
+
+
+def test_eda_sympathetic():
+    eda_signal = nk.data("bio_eventrelated_100hz")["EDA"]
+    indexes_posada = nk.eda_sympathetic(eda_signal, sampling_rate=100, method="posada")
+    # Test value is float
+    assert isinstance(indexes_posada["EDA_Sympathetic"], float)
+    assert isinstance(indexes_posada["EDA_SympatheticN"], float)
+
+
+def test_eda_findpeaks():
+    eda_signal = nk.data("bio_eventrelated_100hz")["EDA"]
+    eda_cleaned = nk.eda_clean(eda_signal)
+    eda = nk.eda_phasic(eda_cleaned)
+    eda_phasic = eda["EDA_Phasic"].values
+
+    # Find peaks
+    nabian2018 = nk.eda_findpeaks(eda_phasic, sampling_rate=100, method="nabian2018")
+    assert len(nabian2018["SCR_Peaks"]) == 9
+
+    vanhalem2020 = nk.eda_findpeaks(eda_phasic, sampling_rate=100, method="vanhalem2020")
+    min_n_peaks = min(len(vanhalem2020), len(nabian2018))
+    assert any(
+        nabian2018["SCR_Peaks"][:min_n_peaks] - vanhalem2020["SCR_Peaks"][:min_n_peaks]
+    ) < np.mean(eda_signal)

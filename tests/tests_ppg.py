@@ -1,25 +1,23 @@
 # -*- coding: utf-8 -*-
 
 import itertools
+
 import numpy as np
-import neurokit2 as nk
 import pytest
 
+import neurokit2 as nk
 
 durations = (20, 200)
 sampling_rates = (50, 500)
 heart_rates = (50, 120)
 freq_modulations = (0.1, 0.4)
 
-params = [durations,
-          sampling_rates,
-          heart_rates,
-          freq_modulations]
+params = [durations, sampling_rates, heart_rates, freq_modulations]
 
 params_combis = list(itertools.product(*params))
 
-@pytest.mark.parametrize("duration, sampling_rate, heart_rate, freq_modulation",
-                         params_combis)
+
+@pytest.mark.parametrize("duration, sampling_rate, heart_rate, freq_modulation", params_combis)
 def test_ppg_simulate(duration, sampling_rate, heart_rate, freq_modulation):
 
     ppg = nk.ppg_simulate(
@@ -44,14 +42,16 @@ def test_ppg_simulate(duration, sampling_rate, heart_rate, freq_modulation):
 
     # Ensure that the heart rate fluctuates in the requested range.
     groundtruth_range = freq_modulation * heart_rate
-    observed_range = np.percentile(signals['PPG_Rate'], 90) - np.percentile(signals['PPG_Rate'], 10)
-    assert np.allclose(groundtruth_range, observed_range, atol=groundtruth_range * .15)
+    observed_range = np.percentile(signals["PPG_Rate"], 90) - np.percentile(signals["PPG_Rate"], 10)
+    assert np.allclose(groundtruth_range, observed_range, atol=groundtruth_range * 0.15)
 
     # TODO: test influence of different noise configurations
 
 
-@pytest.mark.parametrize("ibi_randomness, std_heart_rate",
-                         [(.1, 3), (.2, 5), (.3, 8), (.4, 11), (.5, 14), (.6, 19)])
+@pytest.mark.parametrize(
+    "ibi_randomness, std_heart_rate",
+    [(0.1, 3), (0.2, 5), (0.3, 8), (0.4, 11), (0.5, 14), (0.6, 19)],
+)
 def test_ppg_simulate_ibi(ibi_randomness, std_heart_rate):
 
     ppg = nk.ppg_simulate(
@@ -76,7 +76,6 @@ def test_ppg_simulate_ibi(ibi_randomness, std_heart_rate):
 
     # Ensure that standard deviation of heart rate
     assert np.allclose(signals["PPG_Rate"].std(), std_heart_rate, atol=1)
-
 
     # TODO: test influence of different noise configurations
 
@@ -117,6 +116,7 @@ def test_ppg_findpeaks():
 
     sampling_rate = 500
 
+    # Test Elgendi method
     ppg = nk.ppg_simulate(
         duration=30,
         sampling_rate=sampling_rate,
@@ -138,4 +138,49 @@ def test_ppg_findpeaks():
     peaks = info_elgendi["PPG_Peaks"]
 
     assert peaks.size == 29
-    assert peaks.sum() == 219763
+    assert peaks.sum() == 219764
+
+    # Test MSPTD method
+    info_msptd = nk.ppg_findpeaks(ppg, sampling_rate=sampling_rate, method="bishop", show=True)
+
+    peaks = info_msptd["PPG_Peaks"]
+
+    assert peaks.size == 29
+    assert peaks.sum() == 219665
+
+
+@pytest.mark.parametrize(
+    "method_cleaning, method_peaks",
+    [("elgendi", "elgendi"), ("nabian2018", "elgendi")],
+)
+def test_ppg_report(tmp_path, method_cleaning, method_peaks):
+
+    sampling_rate = 500
+
+    ppg = nk.ppg_simulate(
+        duration=30,
+        sampling_rate=sampling_rate,
+        heart_rate=60,
+        frequency_modulation=0.01,
+        ibi_randomness=0.1,
+        drift=1,
+        motion_amplitude=0.5,
+        powerline_amplitude=0.1,
+        burst_amplitude=1,
+        burst_number=5,
+        random_state=42,
+        show=True,
+    )
+
+    d = tmp_path / "sub"
+    d.mkdir()
+    p = d / "myreport.html"
+
+    signals, _ = nk.ppg_process(
+        ppg,
+        sampling_rate=sampling_rate,
+        report=str(p),
+        method_cleaning=method_cleaning,
+        method_peaks=method_peaks,
+    )
+    assert p.is_file()

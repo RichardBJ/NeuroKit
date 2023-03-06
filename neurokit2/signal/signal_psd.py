@@ -22,9 +22,10 @@ def signal_psd(
     order_criteria="KIC",
     order_corrected=True,
     silent=True,
+    t=None,
     **kwargs,
 ):
-    """Compute the Power Spectral Density (PSD).
+    """**Compute the Power Spectral Density (PSD)**
 
     Parameters
     ----------
@@ -33,36 +34,42 @@ def signal_psd(
     sampling_rate : int
         The sampling frequency of the signal (in Hz, i.e., samples/second).
     method : str
-        Either 'welch' (default), 'fft', 'multitapers' (requires the 'mne' package), 'lombscargle'
-        (requires the 'astropy' package) or 'burg'.
+        Either ``"welch"`` (default), ``"fft"``, ``"multitapers"`` (requires the 'mne' package),
+        ``"lombscargle"`` (requires the 'astropy' package) or ``"burg"``.
     show : bool
-        If True, will return a plot. If False, will return the density values that can be plotted externally.
+        If ``True``, will return a plot. If ``False``, will return the density values that can be
+        plotted externally.
     normalize : bool
-        Normalization of power by maximum PSD value. Default to True.
+        Normalization of power by maximum PSD value. Default to ``True``.
         Normalization allows comparison between different PSD methods.
     min_frequency : str, float
-        The minimum frequency. If "default", min_frequency is chosen based on the sampling rate and length of signal to
-        optimize the frequency resolution.
+        The minimum frequency. If default, min_frequency is chosen based on the sampling rate and
+        length of signal to optimize the frequency resolution.
     max_frequency : float
         The maximum frequency.
     window : int
-        Length of each window in seconds (for Welch method). If None (default), window will be automatically
-        calculated to capture at least 2 cycles of min_frequency. If the length of recording does not
-        allow the formal, window will be default to half of the length of recording.
+        Length of each window in seconds (for "Welch" method). If ``None`` (default), window will be
+        automatically calculated to capture at least 2 cycles of min_frequency. If the length of
+        recording does not allow the formal, window will be default to half of the length of
+        recording.
     window_type : str
-        Desired window to use. Defaults to 'hann'. See ``scipy.signal.get_window()`` for list of windows.
+        Desired window to use. Defaults to ``"hann"``. See :func:`.scipy.signal.get_window` for list
+        of windows.
     order : int
-        The order of autoregression (only used for autoregressive (AR) methods such as 'burg').
+        The order of autoregression (only used for autoregressive (AR) methods such as ``"burg"``).
     order_criteria : str
         The criteria to automatically select order in parametric PSD (only used for autoregressive
-        (AR) methods such as 'burg').
+        (AR) methods such as ``"burg"``).
     order_corrected : bool
         Should the order criteria (AIC or KIC) be corrected? If unsure which method to use to choose
         the order, rely on the default (i.e., the corrected KIC).
     silent : bool
-        If False, warnings will be printed. Default to True.
+        If ``False``, warnings will be printed. Default to ``True``.
+    t : array
+        The timestamps corresponding to each sample in the signal, in seconds
+        (for ``"lombscargle"`` method). Defaults to None.
     **kwargs : optional
-        Keyword arguments to be passed to `scipy.signal.welch()`.
+        Keyword arguments to be passed to :func:`.scipy.signal.welch`.
 
     See Also
     --------
@@ -72,24 +79,53 @@ def signal_psd(
     -------
     data : pd.DataFrame
         A DataFrame containing the Power Spectrum values and a plot if
-        `show` is True.
+        ``show`` is ``True``.
 
     Examples
     --------
-    >>> import neurokit2 as nk
-    >>>
-    >>> signal = nk.signal_simulate(duration=2, frequency=[5, 6, 50, 52, 80], noise=0.5)
-    >>>
-    >>> # FFT method (based on numpy)
-    >>> psd_multitapers = nk.signal_psd(signal, method="fft", show=True)
-    >>> # Welch method (based on scipy)
-    >>> psd_welch = nk.signal_psd(signal, method="welch", min_frequency=1, show=True)
-    >>> # Multitapers method (requires MNE)
-    >>> psd_multitapers = nk.signal_psd(signal, method="multitapers", show=True)
-    >>> # Burg method
-    >>> psd_burg = nk.signal_psd(signal, method="burg", min_frequency=1, show=True)
-    >>> # Lomb method (requires AstroPy)
-    >>> psd_lomb = nk.signal_psd(signal, method="lomb", min_frequency=1, show=True)
+    .. ipython:: python
+
+      import neurokit2 as nk
+
+      signal = nk.signal_simulate(duration=2, frequency=[5, 6, 50, 52, 80], noise=0.5)
+
+      # FFT method (based on numpy)
+      @savefig p_signal_psd1.png scale=100%
+      psd_multitapers = nk.signal_psd(signal, method="fft", show=True)
+      @suppress
+      plt.close
+
+    .. ipython:: python
+
+      # Welch method (based on scipy)
+      @savefig p_signal_psd2.png scale=100%
+      psd_welch = nk.signal_psd(signal, method="welch", min_frequency=1, show=True)
+      @suppress
+      plt.close()
+
+    .. ipython:: python
+
+      # Multitapers method (requires MNE)
+      @savefig p_signal_psd3.png scale=100%
+      psd_multitapers = nk.signal_psd(signal, method="multitapers", show=True)
+      @suppress
+      plt.close()
+
+    .. ipython:: python
+
+      # Burg method
+      @savefig p_signal_psd4.png scale=100%
+      psd_burg = nk.signal_psd(signal, method="burg", min_frequency=1, show=True)
+      @suppress
+      plt.close()
+
+    .. ipython:: python
+
+      # Lomb method (requires AstroPy)
+      @savefig p_signal_psd5.png scale=100%
+      psd_lomb = nk.signal_psd(signal, method="lomb", min_frequency=1, show=True)
+      @suppress
+      plt.close()
 
     """
     # Constant Detrend
@@ -106,23 +142,17 @@ def signal_psd(
     # MNE
     if method in ["multitaper", "multitapers", "mne"]:
         frequency, power = _signal_psd_multitaper(
-            signal,
-            sampling_rate=sampling_rate,
-            min_frequency=min_frequency,
-            max_frequency=max_frequency,
+            signal, sampling_rate=sampling_rate, min_frequency=min_frequency, max_frequency=max_frequency,
         )
 
     # FFT (Numpy)
     elif method in ["fft"]:
-        frequency, power = _signal_psd_fft(signal, sampling_rate=sampling_rate)
+        frequency, power = _signal_psd_fft(signal, sampling_rate=sampling_rate, **kwargs)
 
     # Lombscargle (AtroPy)
     elif method.lower() in ["lombscargle", "lomb"]:
         frequency, power = _signal_psd_lomb(
-            signal,
-            sampling_rate=sampling_rate,
-            min_frequency=min_frequency,
-            max_frequency=max_frequency,
+            signal, sampling_rate=sampling_rate, min_frequency=min_frequency, max_frequency=max_frequency, t=t
         )
 
     # Method that are using a window
@@ -151,11 +181,7 @@ def signal_psd(
         # Welch (Scipy)
         if method.lower() in ["welch"]:
             frequency, power = _signal_psd_welch(
-                signal,
-                sampling_rate=sampling_rate,
-                nperseg=nperseg,
-                window_type=window_type,
-                **kwargs,
+                signal, sampling_rate=sampling_rate, nperseg=nperseg, window_type=window_type, **kwargs,
             )
 
         # BURG
@@ -178,15 +204,11 @@ def signal_psd(
     data = pd.DataFrame({"Frequency": frequency, "Power": power})
 
     # Filter
-    data = data.loc[
-        np.logical_and(data["Frequency"] >= min_frequency, data["Frequency"] <= max_frequency)
-    ]
+    data = data.loc[np.logical_and(data["Frequency"] >= min_frequency, data["Frequency"] <= max_frequency)]
     #    data["Power"] = 10 * np.log(data["Power"])
 
     if show is True:
-        ax = data.plot(
-            x="Frequency", y="Power", title="Power Spectral Density (" + str(method) + " method)"
-        )
+        ax = data.plot(x="Frequency", y="Power", title="Power Spectral Density (" + str(method) + " method)")
         ax.set(xlabel="Frequency (Hz)", ylabel="Spectrum")
 
     return data
@@ -197,9 +219,9 @@ def signal_psd(
 # =============================================================================
 
 
-def _signal_psd_fft(signal, sampling_rate=1000):
+def _signal_psd_fft(signal, sampling_rate=1000, n=None):
     # Power-spectrum density (PSD)
-    power = np.abs(np.fft.rfft(signal)) ** 2
+    power = np.abs(np.fft.rfft(signal, n=n)) ** 2
     frequency = np.linspace(0, sampling_rate / 2, len(power))
     return frequency, power
 
@@ -263,17 +285,24 @@ def _signal_psd_welch(signal, sampling_rate=1000, nperseg=None, window_type="han
 # =============================================================================
 
 
-def _signal_psd_lomb(signal, sampling_rate=1000, min_frequency=0, max_frequency=np.inf):
+def _signal_psd_lomb(signal, sampling_rate=1000, min_frequency=0, max_frequency=np.inf, t=None):
 
     try:
         import astropy.timeseries
 
-        if max_frequency == np.inf:
-            max_frequency = sampling_rate / 2  # sanitize highest frequency
-        t = np.arange(len(signal)) / sampling_rate
-        frequency, power = astropy.timeseries.LombScargle(t, signal, normalization="psd").autopower(
-            minimum_frequency=min_frequency, maximum_frequency=max_frequency
-        )
+        if t is None:
+            if max_frequency == np.inf:
+                max_frequency = sampling_rate / 2  # sanitize highest frequency
+            t = np.arange(len(signal)) / sampling_rate
+            frequency, power = astropy.timeseries.LombScargle(t, signal, normalization="psd").autopower(
+                minimum_frequency=min_frequency, maximum_frequency=max_frequency
+            )
+        else:
+            # determine maximum frequency with astropy defaults for unevenly spaced data
+            # https://docs.astropy.org/en/stable/api/astropy.timeseries.LombScargle.html#astropy.timeseries.LombScargle.autopower
+            frequency, power = astropy.timeseries.LombScargle(t, signal, normalization="psd").autopower(
+                minimum_frequency=min_frequency
+            )
 
     except ImportError as e:
         raise ImportError(
@@ -291,13 +320,7 @@ def _signal_psd_lomb(signal, sampling_rate=1000, min_frequency=0, max_frequency=
 
 
 def _signal_psd_burg(
-    signal,
-    sampling_rate=1000,
-    order=16,
-    criteria="KIC",
-    corrected=True,
-    side="one-sided",
-    nperseg=None,
+    signal, sampling_rate=1000, order=16, criteria="KIC", corrected=True, side="one-sided", nperseg=None,
 ):
 
     nfft = int(nperseg * 2)
@@ -367,9 +390,7 @@ def _signal_arma_burg(signal, order=16, criteria="KIC", corrected=True):
 
         if criteria is not None:
             # k=k+1 because order goes from 1 to P whereas k starts at 0.
-            residual_new = _criteria(
-                criteria=criteria, N=N, k=k + 1, rho=new_rho, corrected=corrected
-            )
+            residual_new = _criteria(criteria=criteria, N=N, k=k + 1, rho=new_rho, corrected=corrected)
             if k == 0:
                 residual_old = 2.0 * abs(residual_new)
 
@@ -381,9 +402,7 @@ def _signal_arma_burg(signal, order=16, criteria="KIC", corrected=True):
             residual_old = residual_new
         rho = new_rho
         if rho <= 0:
-            raise ValueError(
-                f"Found a negative value (expected positive strictly) {rho}. Decrease the order."
-            )
+            raise ValueError(f"Found a negative value (expected positive strictly) {rho}. Decrease the order.")
 
         ar = np.resize(ar, ar.size + 1)
         ar[k] = kp
@@ -458,9 +477,7 @@ def _criteria(criteria=None, N=None, k=None, rho=None, corrected=True):
 
     elif criteria == "KIC":
         if corrected is True:
-            residual = (
-                np.log(rho) + k / N / (N - k) + (3.0 - (k + 2.0) / N) * (k + 1.0) / (N - k - 2.0)
-            )
+            residual = np.log(rho) + k / N / (N - k) + (3.0 - (k + 2.0) / N) * (k + 1.0) / (N - k - 2.0)
         else:
             residual = np.log(rho) + 3.0 * (k + 1.0) / float(N)
 
@@ -475,9 +492,7 @@ def _criteria(criteria=None, N=None, k=None, rho=None, corrected=True):
     return residual
 
 
-def _signal_psd_from_arma(
-    ar=None, ma=None, rho=1.0, sampling_rate=1000, nfft=None, side="one-sided"
-):
+def _signal_psd_from_arma(ar=None, ma=None, rho=1.0, sampling_rate=1000, nfft=None, side="one-sided"):
 
     if ar is None and ma is None:
         raise ValueError("Either AR or MA model must be provided")

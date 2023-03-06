@@ -8,7 +8,8 @@ import pandas as pd
 from ..misc import NeuroKitWarning
 from ..signal.signal_power import _signal_power_instant_plot, signal_power
 from ..signal.signal_psd import signal_psd
-from .hrv_utils import _hrv_get_rri, _hrv_sanitize_input
+from .hrv_utils import _hrv_format_input
+from .intervals_process import intervals_process
 
 
 def hrv_frequency(
@@ -24,23 +25,47 @@ def hrv_frequency(
     silent=True,
     normalize=True,
     order_criteria=None,
+    interpolation_rate=100,
     **kwargs
 ):
-    """Computes frequency-domain indices of Heart Rate Variability (HRV).
+    """**Computes frequency-domain indices of Heart Rate Variability (HRV)**
 
-    Note that a minimum duration of the signal containing the peaks is recommended for some HRV indices
-    to be meaningful. For instance, 1, 2 and 5 minutes of high quality signal are the recomended
-    minima for HF, LF and LF/HF, respectively. See references for details.
+    Computes frequency domain HRV metrics, such as the power in different frequency bands.
+
+    * **ULF**: The spectral power of ultra low frequencies (by default, .0 to
+      .0033 Hz). Very long signals are required for this to index to be
+      extracted, otherwise, will return NaN.
+    * **VLF**: The spectral power of very low frequencies (by default, .0033 to .04 Hz).
+    * **LF**: The spectral power of low frequencies (by default, .04 to .15 Hz).
+    * **HF**: The spectral power of high frequencies (by default, .15 to .4 Hz).
+    * **VHF**: The spectral power of very high frequencies (by default, .4 to .5 Hz).
+    * **LFHF**: The ratio obtained by dividing the low frequency power by the high frequency power.
+    * **LFn**: The normalized low frequency, obtained by dividing the low frequency power by
+      the total power.
+    * **HFn**: The normalized high frequency, obtained by dividing the low frequency power by
+      the total power.
+    * **LnHF**: The log transformed HF.
+
+    Note that a minimum duration of the signal containing the peaks is recommended for some HRV
+    indices to be meaningful. For instance, 1, 2 and 5 minutes of high quality signal are the
+    recommended minima for HF, LF and LF/HF, respectively.
+
+    .. tip::
+
+      We strongly recommend checking our open-access paper `Pham et al. (2021)
+      <https://doi.org/10.3390/s21123998>`_ on HRV indices for more information.
+
 
     Parameters
     ----------
     peaks : dict
         Samples at which cardiac extrema (i.e., R-peaks, systolic peaks) occur.
-        Can be a list of indices or the output(s) of other functions such as ecg_peaks,
-        ppg_peaks, ecg_process or bio_process.
+        Can be a list of indices or the output(s) of other functions such as :func:`.ecg_peaks`,
+        :func:`.ppg_peaks`, :func:`.ecg_process` or :func:`.bio_process`.
+        Can also be a dict containing the keys `RRI` and `RRI_Time`
+        to directly pass the R-R intervals and their timestamps, respectively.
     sampling_rate : int, optional
-        Sampling rate (Hz) of the continuous cardiac signal in which the peaks occur. Should be at
-        least twice as high as the highest frequency in vhf. By default 1000.
+        Sampling rate (Hz) of the continuous cardiac signal in which the peaks occur.
     ulf : tuple, optional
         Upper and lower limit of the ultra-low frequency band. By default (0, 0.0033).
     vlf : tuple, optional
@@ -52,36 +77,30 @@ def hrv_frequency(
     vhf : tuple, optional
         Upper and lower limit of the very-high frequency band. By default (0.4, 0.5).
     psd_method : str
-        Method used for spectral density estimation. For details see signal.signal_power. By default "welch".
+        Method used for spectral density estimation. For details see :func:`.signal_power`.
+        By default ``"welch"``.
     silent : bool
-        If False, warnings will be printed. Default to True.
+        If ``False``, warnings will be printed. Default to ``True``.
     show : bool
-        If True, will plot the power in the different frequency bands.
+        If ``True``, will plot the power in the different frequency bands.
     normalize : bool
-        Normalization of power by maximum PSD value. Default to True.
+        Normalization of power by maximum PSD value. Default to ``True``.
         Normalization allows comparison between different PSD methods.
     order_criteria : str
         The criteria to automatically select order in parametric PSD (only used for autoregressive
-        (AR) methods such as 'burg'). Defaults to None.
-    **kwargs : optional
-        Other arguments.
+        (AR) methods such as ``"burg"``). Defaults to ``None``.
+    interpolation_rate : int, optional
+        Sampling rate (Hz) of the interpolated interbeat intervals. Should be at least twice as
+        high as the highest frequency in vhf. By default 100. To replicate Kubios defaults, set to 4.
+        To not interpolate, set interpolation_rate to None (in case the interbeat intervals are already
+        interpolated or when using the ``"lombscargle"`` psd_method for which interpolation is not required).
+    **kwargs
+        Additional other arguments.
 
     Returns
     -------
     DataFrame
-        Contains frequency domain HRV metrics:
-        - **ULF**: The spectral power density pertaining to ultra low frequency band i.e., .0 to .0033 Hz
-        by default.
-        - **VLF**: The spectral power density pertaining to very low frequency band i.e., .0033 to .04 Hz
-        by default.
-        - **LF**: The spectral power density pertaining to low frequency band i.e., .04 to .15 Hz by default.
-        - **HF**: The spectral power density pertaining to high frequency band i.e., .15 to .4 Hz by default.
-        - **VHF**: The variability, or signal power, in very high frequency i.e., .4 to .5 Hz by default.
-        - **LFn**: The normalized low frequency, obtained by dividing the low frequency power by
-        the total power.
-        - **HFn**: The normalized high frequency, obtained by dividing the low frequency power by
-        the total power.
-        - **LnHF**: The log transformed HF.
+        Contains frequency domain HRV metrics.
 
     See Also
     --------
@@ -89,45 +108,74 @@ def hrv_frequency(
 
     Examples
     --------
-    >>> import neurokit2 as nk
-    >>>
-    >>> # Download data
-    >>> data = nk.data("bio_resting_5min_100hz")
-    >>>
-    >>> # Find peaks
-    >>> peaks, info = nk.ecg_peaks(data["ECG"], sampling_rate=100)
-    >>>
-    >>> # Compute HRV indices
-    >>> hrv_welch = nk.hrv_frequency(peaks, sampling_rate=100, show=True, psd_method="welch")
-    >>> hrv_burg = nk.hrv_frequency(peaks, sampling_rate=100, show=True, psd_method="burg")
-    >>> hrv_lomb = nk.hrv_frequency(peaks, sampling_rate=100, show=True, psd_method="lomb")
-    >>> hrv_multitapers = nk.hrv_frequency(peaks, sampling_rate=100, show=True, psd_method="multitapers")
+    .. ipython:: python
+
+      import neurokit2 as nk
+
+      # Download data
+      data = nk.data("bio_resting_5min_100hz")
+
+      # Find peaks
+      peaks, info = nk.ecg_peaks(data["ECG"], sampling_rate=100)
+
+      # Compute HRV indices using method="welch"
+      @savefig p_hrv_freq1.png scale=100%
+      hrv_welch = nk.hrv_frequency(peaks, sampling_rate=100, show=True, psd_method="welch")
+      @suppress
+      plt.close()
+
+    .. ipython:: python
+
+      # Using method ="burg"
+      @savefig p_hrv_freq2.png scale=100%
+      hrv_burg = nk.hrv_frequency(peaks, sampling_rate=100, show=True, psd_method="burg")
+      @suppress
+      plt.close()
+
+    .. ipython:: python
+
+      # Using method = "lomb" (requires installation of astropy)
+      @savefig p_hrv_freq3.png scale=100%
+      hrv_lomb = nk.hrv_frequency(peaks, sampling_rate=100, show=True, psd_method="lomb")
+      @suppress
+      plt.close()
+
+    .. ipython:: python
+
+      # Using method="multitapers"
+      @savefig p_hrv_freq4.png scale=100%
+      hrv_multitapers = nk.hrv_frequency(peaks, sampling_rate=100, show=True,psd_method="multitapers")
+      @suppress
+      plt.close()
 
     References
     ----------
-    - Stein, P. K. (2002). Assessing heart rate variability from real-world Holter reports. Cardiac
-    electrophysiology review, 6(3), 239-244.
-
-    - Shaffer, F., & Ginsberg, J. P. (2017). An overview of heart rate variability metrics and norms.
-    Frontiers in public health, 5, 258.
-
-    - Boardman, A., Schlindwein, F. S., & Rocha, A. P. (2002). A study on the optimum order of
-    autoregressive models for heart rate variability. Physiological measurement, 23(2), 325.
-
-    - Bachler, M. (2017). Spectral Analysis of Unevenly Spaced Data: Models and Application in Heart
-    Rate Variability. Simul. Notes Eur., 27(4), 183-190.
+    * Pham, T., Lau, Z. J., Chen, S. H. A., & Makowski, D. (2021). Heart Rate Variability in
+      Psychology: A Review of HRV Indices and an Analysis Tutorial. Sensors, 21(12), 3998.
+    * Stein, P. K. (2002). Assessing heart rate variability from real-world Holter reports. Cardiac
+      electrophysiology review, 6(3), 239-244.
+    * Shaffer, F., & Ginsberg, J. P. (2017). An overview of heart rate variability metrics and
+      norms. Frontiers in public health, 5, 258.
+    * Boardman, A., Schlindwein, F. S., & Rocha, A. P. (2002). A study on the optimum order of
+      autoregressive models for heart rate variability. Physiological measurement, 23(2), 325.
+    * Bachler, M. (2017). Spectral Analysis of Unevenly Spaced Data: Models and Application in Heart
+      Rate Variability. Simul. Notes Eur., 27(4), 183-190.
 
     """
 
     # Sanitize input
-    peaks = _hrv_sanitize_input(peaks)
-    if isinstance(peaks, tuple):  # Detect actual sampling rate
-        peaks, sampling_rate = peaks[0], peaks[1]
+    # If given peaks, compute R-R intervals (also referred to as NN) in milliseconds
+    rri, rri_time, _ = _hrv_format_input(peaks, sampling_rate=sampling_rate)
 
-    # Compute R-R intervals (also referred to as NN) in milliseconds (interpolated at 1000 Hz by default)
-    rri, sampling_rate = _hrv_get_rri(
-        peaks, sampling_rate=sampling_rate, interpolate=True, **kwargs
+    # Process R-R intervals (interpolated at 100 Hz by default)
+    rri, rri_time, sampling_rate = intervals_process(
+        rri, intervals_time=rri_time, interpolate=True, interpolation_rate=interpolation_rate, **kwargs
     )
+
+    if interpolation_rate is None:
+        t = rri_time
+    else:
+        t = None
 
     frequency_band = [ulf, vlf, lf, hf, vhf]
 
@@ -143,6 +191,7 @@ def hrv_frequency(
         show=False,
         normalize=normalize,
         order_criteria=order_criteria,
+        t=t,
         **kwargs
     )
 
@@ -187,6 +236,7 @@ def hrv_frequency(
             order_criteria=order_criteria,
             normalize=normalize,
             max_frequency=max_frequency,
+            t=t,
         )
     return out
 
@@ -204,6 +254,7 @@ def _hrv_frequency_show(
     order_criteria=None,
     normalize=True,
     max_frequency=0.5,
+    t=None,
     **kwargs
 ):
 
@@ -232,6 +283,7 @@ def _hrv_frequency_show(
         max_frequency=max_frequency,
         order_criteria=order_criteria,
         normalize=normalize,
+        t=t,
     )
 
     _signal_power_instant_plot(psd, out_bands, frequency_band, ax=ax)
